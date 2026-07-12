@@ -2,8 +2,6 @@
 
 Secret Manager is a small workflow for AI coding assistants to use secrets by name without seeing secret values.
 
-It is not tied to Codex. The same protocol works for Claude Code, Codex, Cursor, and other local assistants that can open a terminal or tell a human what command to run.
-
 The assistant may know:
 
 - the secret name
@@ -48,17 +46,38 @@ The workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cu
 
 The bundled scripts target local macOS with Terminal.app and `osascript`.
 
-## Install Or Adapt
+## Install
 
 Use `SKILL.md` as the source instructions for your assistant.
 
-For tools with a skills directory, copy the folder there. For Codex:
+The examples below assume you are in the directory that contains the cloned `secret-manager/` folder.
+
+### Codex
+
+Copy the skill folder into Codex's skills directory:
 
 ```bash
 cp -R secret-manager ~/.codex/skills/
 ```
 
-For tools without this skill format, adapt the rules from `SKILL.md` into the tool's project rules, custom instructions, or memory.
+### Claude Code
+
+Copy the skill folder into Claude's skills directory:
+
+```bash
+cp -R secret-manager ~/.claude/skills/
+```
+
+### Cursor
+
+Cursor does not use this exact skill folder format. Add the rules from `SKILL.md` to a project rule instead:
+
+```bash
+mkdir -p .cursor/rules
+cp secret-manager/SKILL.md .cursor/rules/secret-manager.mdc
+```
+
+Keep the `scripts/` directory in the repository, or copy it somewhere stable, so Cursor can reference `open-secret-terminal.sh` and `one-time-pipe.sh`.
 
 ## Security Boundary
 
