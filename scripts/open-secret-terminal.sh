@@ -4,7 +4,7 @@ umask 077
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: open-secret-terminal.sh [--wait] [--cwd <directory>] -- <command> [args...]
+Usage: open-secret-terminal.sh [--wait] [--timeout <seconds>] [--cwd <directory>] -- <command> [args...]
 USAGE
 }
 
@@ -19,12 +19,18 @@ USAGE
 
 cwd="$PWD"
 wait_for_completion=0
+timeout_seconds=600
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wait)
       wait_for_completion=1
       shift
+      ;;
+    --timeout)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      timeout_seconds="$2"
+      shift 2
       ;;
     --cwd)
       [[ $# -ge 2 ]] || { usage; exit 2; }
@@ -47,6 +53,12 @@ done
   printf 'Directory not found: %s\n' "$cwd" >&2
   exit 1
 }
+case "$timeout_seconds" in
+  ''|*[!0-9]*)
+    printf -- '--timeout requires a positive integer of seconds.\n' >&2
+    exit 2
+    ;;
+esac
 
 # Single-quote a value for a POSIX-style shell without evaluating it.
 shell_quote() {
@@ -55,7 +67,15 @@ shell_quote() {
   printf "'%s'" "$value"
 }
 
-inner_command="cd $(shell_quote "$cwd") &&"
+# One readable line the user can verify before typing a value.
+# %q escapes control characters, so the banner cannot be spoofed by argument content.
+display_command=""
+for arg in "$@"; do
+  display_command+="${display_command:+ }$(printf '%q' "$arg")"
+done
+banner=$'\n[Secret Manager] Destination:\n  '"$display_command"$'\n  (in '"$(printf '%q' "$cwd")"$')\n\nCheck the destination above before entering any value.\n'
+
+inner_command="printf %s $(shell_quote "$banner") && cd $(shell_quote "$cwd") &&"
 for arg in "$@"; do
   inner_command+=" $(shell_quote "$arg")"
 done
@@ -82,7 +102,7 @@ fi
 # Force a known shell for the generated command and suppress BASH_ENV/ENV startup hooks.
 terminal_command="/usr/bin/env BASH_ENV=/dev/null ENV=/dev/null /bin/bash --noprofile --norc -c $(shell_quote "$inner_command")"
 
-/usr/bin/osascript - "$terminal_command" <<'APPLESCRIPT'
+/usr/bin/osascript - "$terminal_command" >/dev/null <<'APPLESCRIPT'
 on run argv
   tell application "Terminal"
     activate
@@ -95,7 +115,12 @@ if [[ $wait_for_completion -eq 0 ]]; then
   exit 0
 fi
 
+deadline=$(( SECONDS + timeout_seconds ))
 while [[ ! -f "$status_file" ]]; do
+  if (( SECONDS >= deadline )); then
+    printf '[Secret Manager] Timed out after %ss waiting for the terminal to finish.\n' "$timeout_seconds" >&2
+    exit 124
+  fi
   sleep 0.2
 done
 
