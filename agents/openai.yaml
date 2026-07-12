@@ -1,0 +1,4 @@
+interface:
+  display_name: "Secret Manager"
+  short_description: "Use secrets by name without exposing values"
+  default_prompt: "Use $secret-manager when a local task needs a real secret: handle only the secret name, then open a visible terminal for the user to enter the value outside chat."
