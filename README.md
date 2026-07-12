@@ -9,7 +9,9 @@ The assistant may know:
 - the target command
 - the project path
 
-The assistant must not know the secret value. Instead, it opens a visible local terminal so the human can verify the destination and type or paste the value outside chat.
+The assistant must not know the secret value. Instead, it opens a visible local
+terminal so the human can verify the destination and type or paste the value
+outside chat.
 
 ## When To Use
 
@@ -26,7 +28,7 @@ when the value grants account or service access.
 Do not use it for public project IDs, public URLs, environment variable names
 without values, or general security discussion where no secret value is needed.
 
-## Example
+## Example: Native CLI Prompt
 
 ```text
 Set GEMINI_API_KEY for this Cloudflare Worker.
@@ -41,6 +43,28 @@ scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
 
 The user enters the actual value only in the terminal prompt.
 
+## Example: One-Time Local Handoff
+
+```text
+Use this service role key once to check Supabase school counts.
+```
+
+The assistant should run a command like:
+
+```bash
+scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
+  scripts/run-with-secret.sh \
+  --env CLIENT_SUPABASE_SERVICE_ROLE_KEY \
+  --prompt "CLIENT_SUPABASE_SERVICE_ROLE_KEY" \
+  --purpose "Check Supabase school counts" \
+  -- node scripts/check-supabase-counts.mjs
+```
+
+`run-with-secret.sh` asks for the value in Terminal and exposes it only to the
+child command as the named environment variable. Input is visible by default so
+the user can see whether paste worked. Add `--hidden` if masked input is
+preferred.
+
 ## The Protocol
 
 1. The user gives the assistant only the secret name and destination.
@@ -52,8 +76,8 @@ The user enters the actual value only in the terminal prompt.
 ## Files
 
 - `SKILL.md` - skill instructions for local coding assistants
-- `scripts/open-secret-terminal.sh` - opens Terminal.app with a non-secret command
-- `scripts/one-time-pipe.sh` - hidden one-line stdin handoff for CLIs that explicitly read from stdin
+- `scripts/open-secret-terminal.sh` - opens Terminal.app with a non-secret command and destination banner
+- `scripts/run-with-secret.sh` - one-time Terminal input vessel for a child command
 - `agents/openai.yaml` - optional OpenAI/Codex metadata
 
 ## Compatibility
@@ -93,13 +117,18 @@ mkdir -p .cursor/rules
 cp secret-manager/SKILL.md .cursor/rules/secret-manager.mdc
 ```
 
-Keep the `scripts/` directory in the repository, or copy it somewhere stable, so Cursor can reference `open-secret-terminal.sh` and `one-time-pipe.sh`.
+Keep the `scripts/` directory in the repository, or copy it somewhere stable, so Cursor can reference `open-secret-terminal.sh` and `run-with-secret.sh`.
 
 ## Security Boundary
 
-This prevents accidental disclosure into chat, model context, shell arguments, normal tool output, and files created by this skill.
+This prevents accidental disclosure into chat, model context, shell arguments,
+normal tool output, and files created by this skill.
 
-It is not isolation from a malicious local process, shell startup hooks, clipboard history, screen recording, or an untrusted target CLI.
+It is not isolation from a malicious local process, shell startup hooks,
+clipboard history, screen recording, process environment inspection by a local
+adversary, or an untrusted target CLI. It also cannot stop a compromised or
+prompt-injected assistant from choosing a malicious destination — the Terminal
+destination banner is the user's chance to catch that. Read it before typing.
 
 ## License
 
