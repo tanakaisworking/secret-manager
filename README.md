@@ -1,14 +1,16 @@
 # Secret Manager
 
-Secret Manager is a small agent workflow for using secrets by name without exposing secret values to the AI.
+Secret Manager is a small workflow for AI coding assistants to use secrets by name without seeing secret values.
 
-The agent may know:
+It is not tied to Codex. The same protocol works for Claude Code, Codex, Cursor, and other local assistants that can open a terminal or tell a human what command to run.
+
+The assistant may know:
 
 - the secret name
 - the target command
 - the project path
 
-The agent must not know the secret value. Instead, it opens a visible local terminal so the human can verify the destination and type or paste the value outside chat.
+The assistant must not know the secret value. Instead, it opens a visible local terminal so the human can verify the destination and type or paste the value outside chat.
 
 ## Use Case
 
@@ -16,7 +18,7 @@ The agent must not know the secret value. Instead, it opens a visible local term
 Set GEMINI_API_KEY for this Cloudflare Worker.
 ```
 
-The agent should run a command like:
+The assistant should run a command like:
 
 ```bash
 scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
@@ -25,26 +27,38 @@ scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
 
 The user enters the actual value only in the terminal prompt.
 
+## The Protocol
+
+1. The user gives the assistant only the secret name and destination.
+2. The assistant builds a command that contains no secret value.
+3. The assistant opens a visible local terminal, or tells the user the exact command to run.
+4. The user verifies the destination and enters the secret value outside chat.
+5. The assistant verifies success using a non-secret command if one exists.
+
 ## Files
 
-- `SKILL.md` - skill instructions for local coding agents
+- `SKILL.md` - skill instructions for local coding assistants
 - `scripts/open-secret-terminal.sh` - opens Terminal.app with a non-secret command
 - `scripts/one-time-pipe.sh` - hidden one-line stdin handoff for CLIs that explicitly read from stdin
-- `agents/openai.yaml` - Codex/OpenAI skill metadata
+- `agents/openai.yaml` - optional OpenAI/Codex metadata
 
 ## Compatibility
 
-The workflow is agent-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding agents.
+The workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local AI coding assistants.
 
 The bundled scripts target local macOS with Terminal.app and `osascript`.
 
-## Install
+## Install Or Adapt
 
-Copy this directory into your agent's skills directory. For Codex:
+Use `SKILL.md` as the source instructions for your assistant.
+
+For tools with a skills directory, copy the folder there. For Codex:
 
 ```bash
 cp -R secret-manager ~/.codex/skills/
 ```
+
+For tools without this skill format, adapt the rules from `SKILL.md` into the tool's project rules, custom instructions, or memory.
 
 ## Security Boundary
 
