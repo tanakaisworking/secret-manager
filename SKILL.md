@@ -1,14 +1,14 @@
 ---
 name: secret-manager
-description: Use when an AI coding agent needs a real API key, token, password, or single-line secret to complete a local CLI task, deployment, login, environment setup, or rotation. The user should tell the agent only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, or code that only mentions environment variable names.
+description: Use when an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs a real API key, token, password, シークレット, or single-line credential to complete a local CLI task, deployment, login, environment setup, or rotation. The user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, or code that only mentions environment variable names.
 metadata:
   version: "0.5.0"
-  compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is agent-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding agents.
+  compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding assistants.
 ---
 
 # Secret Manager
 
-The core contract: the agent may know the secret name, destination command, and project path; the agent must not know the secret value.
+The core contract: the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value.
 
 Use the smallest safe path. If the target CLI already prompts securely, just open that prompt in a visible terminal. Store secrets only when the user explicitly wants reuse.
 
@@ -16,7 +16,7 @@ Use the smallest safe path. If the target CLI already prompts securely, just ope
 
 1. Never ask the user to paste a secret value into chat.
 2. Never put a secret value in command arguments, environment variables, heredocs, temp files, logs, or agent-visible output.
-3. The agent may handle non-secret metadata: secret name, service name, account name, working directory, and target command.
+3. The assistant may handle non-secret metadata: secret name, service name, account name, working directory, and target command.
 4. Show the user the destination command before value entry.
 5. Prefer platform CLIs that accept a secret name and prompt for the value, such as `wrangler secret put GEMINI_API_KEY`.
 
