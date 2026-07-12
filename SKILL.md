@@ -1,8 +1,8 @@
 ---
 name: secret-manager
-description: Use when an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs a real API key, token, password, シークレット, or single-line credential to complete a local CLI task, deployment, login, environment setup, or rotation. The user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, or code that only mentions environment variable names.
+description: Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs any real value that should not be pasted into chat: API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth client secrets, webhook signing secrets, passwords, database URLs with credentials, SSH/private keys, recovery codes, one-time credentials, vendor/client credentials, or any pasted-looking credential even when the prefix is unknown. Trigger on phrasing such as "secret", "API key", "token", "password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants account or service access. The user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, public IDs, environment variable names without values, or non-secret configuration.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
   compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding assistants.
 ---
 
@@ -11,6 +11,25 @@ metadata:
 The core contract: the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value.
 
 Use the smallest safe path. If the target CLI already prompts securely, just open that prompt in a visible terminal. Store secrets only when the user explicitly wants reuse.
+
+## Trigger Rule
+
+Use this skill by category, not by a fixed prefix list. If the value would let
+someone log in, call an API, deploy, access a database, impersonate a user, sign
+webhooks, or recover an account, it must not enter chat.
+
+Trigger examples include:
+
+- API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth
+  client secrets, webhook signing secrets, passwords, database URLs with
+  credentials, SSH/private keys, recovery codes, and one-time credentials.
+- User wording like "secret", "API key", "token", "password", "シークレット",
+  "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants
+  access.
+- Any pasted-looking credential, even if the prefix is unfamiliar.
+
+Do not trigger for public project IDs, public URLs, environment variable names
+without values, or general security discussion where no secret value is needed.
 
 ## Rules
 
