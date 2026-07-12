@@ -1,6 +1,7 @@
 # Secret Manager
 
-Secret Manager is a small workflow for AI coding assistants to use secrets by name without seeing secret values.
+Secret Manager is a small workflow for AI coding assistants to use secrets by
+name without seeing secret values.
 
 The assistant may know:
 
@@ -10,7 +11,22 @@ The assistant may know:
 
 The assistant must not know the secret value. Instead, it opens a visible local terminal so the human can verify the destination and type or paste the value outside chat.
 
-## Use Case
+## When To Use
+
+Use this whenever the assistant needs a real value that should not be pasted
+into chat, including API keys, access tokens, PATs, service role keys, JWTs,
+OAuth client secrets, webhook signing secrets, passwords, database URLs with
+credentials, SSH/private keys, recovery codes, one-time credentials, or
+vendor/client credentials.
+
+It should also trigger on natural phrasing like "secret", "API key", "token",
+"password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報"
+when the value grants account or service access.
+
+Do not use it for public project IDs, public URLs, environment variable names
+without values, or general security discussion where no secret value is needed.
+
+## Example
 
 ```text
 Set GEMINI_API_KEY for this Cloudflare Worker.
