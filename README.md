@@ -37,11 +37,32 @@ Set GEMINI_API_KEY for this Cloudflare Worker.
 The assistant should run a command like:
 
 ```bash
-scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
+scripts/open-secret-terminal.sh --wait --cwd "$PWD" \
+  --key-type "一時的（コマンド終了時に破棄）" \
+  --storage "なし（プロセスのメモリのみ）" \
+  --secret-name GEMINI_API_KEY \
+  --purpose "Cloudflare Workerへ登録" -- \
   pnpm wrangler secret put GEMINI_API_KEY
 ```
 
 The user enters the actual value only in the terminal prompt.
+
+## Example: Session Handoff
+
+For several commands that need the same secret, keep it only in a dedicated
+process for a bounded session:
+
+```bash
+scripts/secret-session start --name supabase --env SUPABASE_ACCESS_TOKEN --ttl 3600
+scripts/secret-session exec --name supabase -- supabase db query ...
+scripts/secret-session exec --name supabase -- supabase db query ...
+scripts/secret-session clear --name supabase
+```
+
+When `start` is called from a non-interactive shell, it opens Terminal.app for
+the one-time input and returns after the session is ready. The secret is held
+only in that process's memory. A temporary Unix socket is used for control, but
+it contains no secret; TTL expiry or `clear` removes the session metadata.
 
 ## Example: One-Time Local Handoff
 
@@ -52,7 +73,11 @@ Use this service role key once to check Supabase school counts.
 The assistant should run a command like:
 
 ```bash
-scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
+scripts/open-secret-terminal.sh --wait --cwd "$PWD" \
+  --key-type "一時的（コマンド終了時に破棄）" \
+  --storage "なし（プロセスのメモリのみ）" \
+  --secret-name CLIENT_SUPABASE_SERVICE_ROLE_KEY \
+  --purpose "Check Supabase school counts" -- \
   scripts/run-with-secret.sh \
   --env CLIENT_SUPABASE_SERVICE_ROLE_KEY \
   --prompt "CLIENT_SUPABASE_SERVICE_ROLE_KEY" \
@@ -63,7 +88,8 @@ scripts/open-secret-terminal.sh --wait --cwd "$PWD" -- \
 `run-with-secret.sh` asks for the value in Terminal and exposes it only to the
 child command as the named environment variable. Input is visible by default so
 the user can see whether paste worked. Add `--hidden` if masked input is
-preferred.
+preferred. The handoff screen shows the key type, storage location, expiry,
+secret name, purpose, and destination command before the `value:` prompt.
 
 ## The Protocol
 
@@ -76,8 +102,9 @@ preferred.
 ## Files
 
 - `SKILL.md` - skill instructions for local coding assistants
-- `scripts/open-secret-terminal.sh` - opens Terminal.app with a non-secret command and destination banner
+- `scripts/open-secret-terminal.sh` - opens Terminal.app with the Secret Manager handoff panel
 - `scripts/run-with-secret.sh` - one-time Terminal input vessel for a child command
+- `scripts/secret-session` - bounded memory-only session for repeated commands
 - `agents/openai.yaml` - optional OpenAI/Codex metadata
 
 ## Compatibility

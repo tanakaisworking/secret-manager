@@ -4,7 +4,9 @@ umask 077
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: open-secret-terminal.sh [--wait] [--timeout <seconds>] [--cwd <directory>] -- <command> [args...]
+Usage: open-secret-terminal.sh [--wait] [--timeout <seconds>] [--cwd <directory>]
+  [--key-type TEXT] [--storage TEXT] [--ttl SECONDS] [--secret-name NAME] [--purpose TEXT]
+  -- <command> [args...]
 USAGE
 }
 
@@ -20,6 +22,11 @@ USAGE
 cwd="$PWD"
 wait_for_completion=0
 timeout_seconds=600
+key_type="一時的"
+storage="なし（プロセスのメモリのみ）"
+session_ttl=""
+secret_name="（コマンド内で使用）"
+purpose="指定された処理のために一時利用"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,6 +42,31 @@ while [[ $# -gt 0 ]]; do
     --cwd)
       [[ $# -ge 2 ]] || { usage; exit 2; }
       cwd="$2"
+      shift 2
+      ;;
+    --key-type)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      key_type="$2"
+      shift 2
+      ;;
+    --storage)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      storage="$2"
+      shift 2
+      ;;
+    --ttl)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      session_ttl="$2"
+      shift 2
+      ;;
+    --secret-name)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      secret_name="$2"
+      shift 2
+      ;;
+    --purpose)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      purpose="$2"
       shift 2
       ;;
     --)
@@ -73,9 +105,37 @@ display_command=""
 for arg in "$@"; do
   display_command+="${display_command:+ }$(printf '%q' "$arg")"
 done
-banner=$'\n[Secret Manager] Destination:\n  '"$display_command"$'\n  (in '"$(printf '%q' "$cwd")"$')\n\nCheck the destination above before entering any value.\n'
+if [[ -n "$session_ttl" ]]; then
+  case "$session_ttl" in
+    ''|*[!0-9]*)
+      printf -- '--ttl requires a positive integer of seconds.\n' >&2
+      exit 2
+      ;;
+  esac
+  if (( session_ttl % 3600 == 0 )); then
+    expiry="$((session_ttl / 3600))時間後に自動失効"
+  elif (( session_ttl % 60 == 0 )); then
+    expiry="$((session_ttl / 60))分後に自動失効"
+  else
+    expiry="${session_ttl}秒後に自動失効"
+  fi
+else
+  expiry="コマンド終了時に破棄"
+fi
+panel=$'\n**************************************************\n'
+panel+=$'  Secret Manager\n'
+panel+='**************************************************'$'\n'
+panel+="  Key Type : $key_type"$'\n'
+panel+="  保存先   : $storage"$'\n'
+panel+="  有効期限 : $expiry"$'\n'
+panel+="  Secret   : $secret_name"$'\n'
+panel+="  用途     : $purpose"$'\n'
+panel+=$'\n  実行先（確認用）:\n'
+panel+="    $display_command"$'\n'
+panel+="    (in $(printf '%q' "$cwd"))"$'\n'
+panel+=$'\n  上記を確認してから、Terminal内の value 欄に入力してください。\n\n'
 
-inner_command="printf %s $(shell_quote "$banner") && cd $(shell_quote "$cwd") &&"
+inner_command="printf %s $(shell_quote "$panel") && export SECRET_MANAGER_UI_SHOWN=1 && cd $(shell_quote "$cwd") &&"
 for arg in "$@"; do
   inner_command+=" $(shell_quote "$arg")"
 done
