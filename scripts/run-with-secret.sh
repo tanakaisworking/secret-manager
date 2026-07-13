@@ -15,7 +15,7 @@ die() {
 }
 
 env_name=""
-prompt="Secret"
+prompt="value"
 purpose=""
 hidden=0
 
@@ -64,6 +64,22 @@ print_command() {
   printf '\n'
 }
 
+render_panel() {
+  printf '\n**************************************************\n'
+  printf '  Secret Manager\n'
+  printf '**************************************************\n'
+  printf '  Key Type : 一時的（コマンド終了時に破棄）\n'
+  printf '  保存先   : なし（プロセスのメモリのみ）\n'
+  printf '  有効期限 : コマンド終了時\n'
+  printf '  Secret   : %s\n' "$env_name"
+  if [[ -n "$purpose" ]]; then
+    printf '  用途     : %s\n' "$purpose"
+  fi
+  printf '\n  実行先（確認用）:\n'
+  print_command "$@"
+  printf '\n  上記を確認してから、Terminal内の value 欄に入力してください。\n\n'
+}
+
 secret=""
 tty_state="$(stty -g 2>/dev/null || true)"
 cleanup() {
@@ -75,14 +91,9 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
 
-printf '\n[Secret Manager] One-time input\n'
-if [[ -n "$purpose" ]]; then
-  printf 'Purpose:\n  %s\n' "$purpose"
+if [[ "${SECRET_MANAGER_UI_SHOWN:-}" != "1" ]]; then
+  render_panel "$@"
 fi
-printf 'Secret env:\n  %s\n' "$env_name"
-printf 'Command:\n'
-print_command "$@"
-printf '\nCheck the purpose and command above before entering any value.\n'
 
 if [[ $hidden -eq 1 ]]; then
   IFS= read -r -s -p "$prompt: " secret || die "Input cancelled."
