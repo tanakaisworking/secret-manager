@@ -28,6 +28,14 @@ session_ttl=""
 secret_name="（コマンド内で使用）"
 purpose="指定された処理のために一時利用"
 
+# This script always opens a visible Terminal; color is enabled for that UI by default.
+# Set SECRET_MANAGER_COLOR=0 when a plain-text handoff is required.
+if [[ "${SECRET_MANAGER_COLOR:-1}" != "0" ]]; then
+  header_command='orange=$(tput setaf 173); bold=$(tput bold); reset=$(tput sgr0); printf "%s%s**************************************************%s\n%s%s  Secret Manager%s\n%s%s**************************************************%s\n" "$orange" "$bold" "$reset" "$orange" "$bold" "$reset" "$orange" "$bold" "$reset"'
+else
+  header_command='printf "%s\n" "**************************************************" "  Secret Manager" "**************************************************"'
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wait)
@@ -122,9 +130,7 @@ if [[ -n "$session_ttl" ]]; then
 else
   expiry="コマンド終了時に破棄"
 fi
-panel=$'\n**************************************************\n'
-panel+=$'  Secret Manager\n'
-panel+='**************************************************'$'\n'
+panel=""
 panel+="  Key Type : $key_type"$'\n'
 panel+="  保存先   : $storage"$'\n'
 panel+="  有効期限 : $expiry"$'\n'
@@ -133,9 +139,13 @@ panel+="  用途     : $purpose"$'\n'
 panel+=$'\n  実行先（確認用）:\n'
 panel+="    $display_command"$'\n'
 panel+="    (in $(printf '%q' "$cwd"))"$'\n'
-panel+=$'\n  上記を確認してから、Terminal内の value 欄に入力してください。\n\n'
+panel+=$'\n  上記を確認してから、Terminal内の input here: 欄に入力してください。\n\n'
 
-inner_command="printf %s $(shell_quote "$panel") && export SECRET_MANAGER_UI_SHOWN=1 && cd $(shell_quote "$cwd") &&"
+panel_command="printf '%s\\n'"
+while IFS= read -r panel_line; do
+  panel_command+=" $(shell_quote "$panel_line")"
+done <<< "$panel"
+inner_command="$header_command; $panel_command && export SECRET_MANAGER_UI_SHOWN=1 SECRET_MANAGER_COLOR=1 && cd $(shell_quote "$cwd") &&"
 for arg in "$@"; do
   inner_command+=" $(shell_quote "$arg")"
 done

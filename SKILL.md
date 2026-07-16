@@ -2,7 +2,7 @@
 name: secret-manager
 description: Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs any real value that should not be pasted into chat: API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth client secrets, webhook signing secrets, passwords, database URLs with credentials, SSH/private keys, recovery codes, one-time credentials, vendor/client credentials, or any pasted-looking credential even when the prefix is unknown. Trigger on phrasing such as "secret", "API key", "token", "password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants account or service access. The user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, public IDs, environment variable names without values, or non-secret configuration.
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
   compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding assistants.
 ---
 
@@ -10,10 +10,10 @@ metadata:
 
 The core contract: the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value.
 
-Use the smallest safe path. If the target CLI already prompts securely, just
-open that prompt in a visible terminal. If the assistant needs the value only to
-run one local command, use the terminal as the one-time input vessel with
-`run-with-secret.sh`. Store secrets only when the user explicitly wants reuse.
+Use the smallest usable path. Open a visible terminal, let the user paste the
+value into a normal visible `input here:` prompt, then pass it directly to the
+destination command. Do not use masked password boxes; paste failures are worse
+than the extra masking in this local workflow.
 
 ## Trigger Rule
 
@@ -37,11 +37,11 @@ without values, or general security discussion where no secret value is needed.
 ## Rules
 
 1. Never ask the user to paste a secret value into chat.
-2. Never put a secret value in command arguments, heredocs, temp files, logs, or agent-visible output.
+2. Never put a secret value in chat, files, logs, or agent-visible output.
 3. The assistant may handle non-secret metadata: secret name, service name, account name, working directory, and target command.
 4. Show the user the destination command before value entry.
-5. Prefer platform CLIs that accept a secret name and prompt for the value, such as `wrangler secret put GEMINI_API_KEY`.
-6. For one-time local checks, pass the value only inside the visible terminal process, usually as an environment variable to the child command via `run-with-secret.sh`.
+5. Hidden or masked input is prohibited. Do not pass `--hidden`; do not use a native CLI prompt if it masks input.
+6. For one-time local checks, use `run-with-secret.sh`. For macOS Keychain persistence, use `keychain-set-secret.sh`.
 
 ## Workflow
 
@@ -55,10 +55,14 @@ without values, or general security discussion where no secret value is needed.
   --storage "なし（プロセスのメモリのみ）" \
   --secret-name GEMINI_API_KEY \
   --purpose "Cloudflare Workerへ登録" -- \
-  pnpm wrangler secret put GEMINI_API_KEY
+  "$SKILL_DIR/scripts/run-with-secret.sh" \
+  --env GEMINI_API_KEY \
+  --prompt "GEMINI_API_KEY" \
+  --purpose "Cloudflare Workerへ登録" -- \
+  /bin/sh -lc 'printf "%s\n" "$GEMINI_API_KEY" | pnpm wrangler secret put GEMINI_API_KEY'
 ```
 
-4. Tell the user to paste/type the value into that terminal prompt.
+4. Tell the user to paste/type the value into the visible `input here:` prompt.
 5. Verify with a non-secret command when available.
 
 Resolve `SKILL_DIR` from the loaded `SKILL.md` path. Do not hard-code an installation path.
@@ -71,10 +75,9 @@ exit code 124 means the user never completed the entry.
 
 Use this when the assistant needs a secret for one local command and there is no
 native CLI prompt to use. The value is entered in Terminal, not chat, and is made
-available only to the child process as the environment variable named by `--env`.
+available to the child process as the environment variable named by `--env`.
 
-Input is visible by default so the user can tell whether paste worked. Add
-`--hidden` only when the user wants masked input.
+Input is always visible so the user can tell whether paste worked.
 
 ```bash
 "$SKILL_DIR/scripts/open-secret-terminal.sh" --wait --cwd "$PWD" \
@@ -93,12 +96,39 @@ The target command must read the value from the named environment variable. It
 must not print the value. Return only non-secret output or write non-secret
 results to a file the assistant can read. The terminal UI shows the key type,
 storage location, expiry, purpose, and destination command before input.
+The panel and `input here:` prompt use orange terminal emphasis; set
+`SECRET_MANAGER_COLOR=0` for plain text.
+
+If a target CLI only accepts the secret on stdin, run a small local shell command
+inside `run-with-secret.sh`, such as:
+
+```bash
+/bin/sh -lc 'printf "%s\n" "$SECRET_NAME" | target-cli secret put SECRET_NAME'
+```
 
 ## Persistent Storage
 
-Persistent storage is not the default recommendation. If the user wants reuse, suggest a normal user-controlled store and run that store's own interactive flow in the visible terminal. Common options include macOS Keychain, 1Password, Bitwarden, KeePassXC, OS keyrings, or the platform's managed secret store.
+Persistent storage is not the default recommendation. If the user wants reuse,
+use the simplest user-controlled store. On macOS Keychain, use the bundled
+visible-input helper:
 
-Do not improvise commands that print a stored value or pass it as an argument.
+```bash
+"$SKILL_DIR/scripts/open-secret-terminal.sh" --wait --cwd "$PWD" \
+  --key-type "永続（Keychain）" \
+  --storage "macOS Keychain" \
+  --secret-name SUPABASE_ACCESS_TOKEN_HELLOINTER \
+  --purpose "Hello International School Supabase操作用に保存" -- \
+  "$SKILL_DIR/scripts/keychain-set-secret.sh" \
+  --service SUPABASE_ACCESS_TOKEN_HELLOINTER \
+  --account hello-international-school \
+  --comment "Hello International School Supabase access token"
+```
+
+Read later without printing it:
+
+```bash
+SUPABASE_ACCESS_TOKEN="$(security find-generic-password -s SUPABASE_ACCESS_TOKEN_HELLOINTER -w)" your-command
+```
 
 ## Session Handoff
 
@@ -113,7 +143,7 @@ scripts/secret-session clear --name supabase
 ```
 
 `start` opens a visible Terminal automatically when called non-interactively
-and returns only after the session has accepted the input.
+and returns only after the session has accepted the visible input.
 The secret stays in the session process memory; the temporary Unix socket and
 directory contain only session metadata. `clear` or TTL expiry removes them.
 If the process is killed, the OS reclaims the secret memory; a stale metadata
@@ -132,5 +162,5 @@ normal tool output, and files created by this skill. It is not isolation from a
 malicious local process, shell startup hooks, clipboard history, screen
 recording, process environment inspection by a local adversary, or an untrusted
 target CLI. It also cannot stop a compromised or prompt-injected assistant from
-choosing a malicious destination — the Secret Manager panel and `value:` prompt
+choosing a malicious destination — the Secret Manager panel and `input here:` prompt
 in Terminal are the user's chance to catch that. Read the panel before typing.

@@ -42,10 +42,17 @@ scripts/open-secret-terminal.sh --wait --cwd "$PWD" \
   --storage "なし（プロセスのメモリのみ）" \
   --secret-name GEMINI_API_KEY \
   --purpose "Cloudflare Workerへ登録" -- \
-  pnpm wrangler secret put GEMINI_API_KEY
+  scripts/run-with-secret.sh \
+  --env GEMINI_API_KEY \
+  --prompt "GEMINI_API_KEY" \
+  --purpose "Cloudflare Workerへ登録" -- \
+  /bin/sh -lc 'printf "%s\n" "$GEMINI_API_KEY" | pnpm wrangler secret put GEMINI_API_KEY'
 ```
 
-The user enters the actual value only in the terminal prompt.
+The user enters the actual value only in the visible terminal prompt.
+
+The Secret Manager header and `input here:` prompt use orange terminal emphasis. Set
+`SECRET_MANAGER_COLOR=0` when a plain-text handoff is preferred.
 
 ## Example: Session Handoff
 
@@ -85,11 +92,31 @@ scripts/open-secret-terminal.sh --wait --cwd "$PWD" \
   -- node scripts/check-supabase-counts.mjs
 ```
 
-`run-with-secret.sh` asks for the value in Terminal and exposes it only to the
-child command as the named environment variable. Input is visible by default so
-the user can see whether paste worked. Add `--hidden` if masked input is
-preferred. The handoff screen shows the key type, storage location, expiry,
-secret name, purpose, and destination command before the `value:` prompt.
+`run-with-secret.sh` asks for the value in Terminal and exposes it to the child
+command as the named environment variable. Input is always visible so the user
+can see whether paste worked. The handoff screen shows the key type, storage location, expiry,
+secret name, purpose, and destination command before the `input here:` prompt. The
+panel uses orange terminal emphasis; set `SECRET_MANAGER_COLOR=0` for plain text.
+
+## Example: Keychain Persistence
+
+```bash
+scripts/open-secret-terminal.sh --wait --cwd "$PWD" \
+  --key-type "永続（Keychain）" \
+  --storage "macOS Keychain" \
+  --secret-name SUPABASE_ACCESS_TOKEN_HELLOINTER \
+  --purpose "Hello International School Supabase操作用に保存" -- \
+  scripts/keychain-set-secret.sh \
+  --service SUPABASE_ACCESS_TOKEN_HELLOINTER \
+  --account hello-international-school \
+  --comment "Hello International School Supabase access token"
+```
+
+Read it later without printing it:
+
+```bash
+SUPABASE_ACCESS_TOKEN="$(security find-generic-password -s SUPABASE_ACCESS_TOKEN_HELLOINTER -w)" your-command
+```
 
 ## The Protocol
 
@@ -104,6 +131,7 @@ secret name, purpose, and destination command before the `value:` prompt.
 - `SKILL.md` - skill instructions for local coding assistants
 - `scripts/open-secret-terminal.sh` - opens Terminal.app with the Secret Manager handoff panel
 - `scripts/run-with-secret.sh` - one-time Terminal input vessel for a child command
+- `scripts/keychain-set-secret.sh` - visible-input helper for macOS Keychain persistence
 - `scripts/secret-session` - bounded memory-only session for repeated commands
 - `agents/openai.yaml` - optional OpenAI/Codex metadata
 
