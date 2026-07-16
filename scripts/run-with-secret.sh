@@ -5,7 +5,7 @@ unset BASH_XTRACEFD 2>/dev/null || true
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: run-with-secret.sh --env NAME [--prompt LABEL] [--purpose TEXT] [--hidden] -- <command> [args...]
+Usage: run-with-secret.sh --env NAME [--prompt LABEL] [--purpose TEXT] -- <command> [args...]
 USAGE
 }
 
@@ -15,9 +15,18 @@ die() {
 }
 
 env_name=""
-prompt="value"
+prompt="input here"
 purpose=""
-hidden=0
+
+if [[ "${SECRET_MANAGER_COLOR:-}" == "1" || ( -t 1 && -z "${NO_COLOR:-}" ) ]]; then
+  orange=$'\033[38;5;173m'
+  bold=$'\033[1m'
+  reset=$'\033[0m'
+else
+  orange=""
+  bold=""
+  reset=""
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -37,8 +46,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --hidden)
-      hidden=1
-      shift
+      die "--hidden is intentionally disabled. Secret Manager uses visible Terminal input so paste mistakes are obvious."
       ;;
     --)
       shift
@@ -65,9 +73,9 @@ print_command() {
 }
 
 render_panel() {
-  printf '\n**************************************************\n'
-  printf '  Secret Manager\n'
-  printf '**************************************************\n'
+  printf '\n%s%s**************************************************%s\n' "$orange" "$bold" "$reset"
+  printf '%s%s  Secret Manager%s\n' "$orange" "$bold" "$reset"
+  printf '%s%s**************************************************%s\n' "$orange" "$bold" "$reset"
   printf '  Key Type : 一時的（コマンド終了時に破棄）\n'
   printf '  保存先   : なし（プロセスのメモリのみ）\n'
   printf '  有効期限 : コマンド終了時\n'
@@ -77,7 +85,7 @@ render_panel() {
   fi
   printf '\n  実行先（確認用）:\n'
   print_command "$@"
-  printf '\n  上記を確認してから、Terminal内の value 欄に入力してください。\n\n'
+  printf '\n  上記を確認してから、Terminal内の input here: 欄に入力してください。\n\n'
 }
 
 secret=""
@@ -95,12 +103,7 @@ if [[ "${SECRET_MANAGER_UI_SHOWN:-}" != "1" ]]; then
   render_panel "$@"
 fi
 
-if [[ $hidden -eq 1 ]]; then
-  IFS= read -r -s -p "$prompt: " secret || die "Input cancelled."
-  printf '\n'
-else
-  IFS= read -r -p "$prompt: " secret || die "Input cancelled."
-fi
+IFS= read -r -p "${orange}${bold}${prompt}:${reset} " secret || die "Input cancelled."
 [[ -n "$secret" ]] || die "No value entered."
 
 export "$env_name=$secret"
