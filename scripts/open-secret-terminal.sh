@@ -152,6 +152,7 @@ done
 
 status_dir=""
 status_file=""
+script_file=""
 cleanup() {
   if [[ -n "$status_dir" && -d "$status_dir" ]]; then
     rm -rf -- "$status_dir"
@@ -169,8 +170,19 @@ if [[ $wait_for_completion -eq 1 ]]; then
   inner_command="set +e; $inner_command; sm_rc=\$?; printf '%s\\n' \"\$sm_rc\" > $(shell_quote "$status_file"); printf '\\n[Secret Manager] finished (exit %s)\\n' \"\$sm_rc\"; exit \"\$sm_rc\""
 fi
 
+# Put the generated command in a temp script so Terminal shows a short command
+# instead of a huge, fragile bash -c string.
+script_file="$(mktemp "${TMPDIR:-/tmp}/secret-manager-terminal.XXXXXX.sh")"
+chmod 700 "$script_file"
+{
+  printf '%s\n' '#!/bin/bash'
+  printf '%s\n' 'set +x'
+  printf '%s\n' 'trap '\''rm -f "$0"'\'' EXIT'
+  printf '%s\n' "$inner_command"
+} > "$script_file"
+
 # Force a known shell for the generated command and suppress BASH_ENV/ENV startup hooks.
-terminal_command="/usr/bin/env BASH_ENV=/dev/null ENV=/dev/null /bin/bash --noprofile --norc -c $(shell_quote "$inner_command")"
+terminal_command="/usr/bin/env BASH_ENV=/dev/null ENV=/dev/null /bin/bash --noprofile --norc $(shell_quote "$script_file")"
 
 /usr/bin/osascript - "$terminal_command" >/dev/null <<'APPLESCRIPT'
 on run argv
