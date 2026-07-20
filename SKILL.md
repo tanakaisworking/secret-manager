@@ -1,14 +1,21 @@
 ---
 name: secret-manager
-description: Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs any real value that should not be pasted into chat: API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth client secrets, webhook signing secrets, passwords, database URLs with credentials, SSH/private keys, recovery codes, one-time credentials, vendor/client credentials, or any pasted-looking credential even when the prefix is unknown. Trigger on phrasing such as "secret", "API key", "token", "password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants account or service access. The user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, public IDs, environment variable names without values, or non-secret configuration.
+description: Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs any real value that should normally not be pasted into chat: API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth client secrets, webhook signing secrets, passwords, database URLs with credentials, SSH/private keys, recovery codes, one-time credentials, vendor/client credentials, or any pasted-looking credential even when the prefix is unknown. Trigger on phrasing such as "secret", "API key", "token", "password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants account or service access. For an explicitly disposable, test-only, low-privilege secret that the user will revoke immediately after use, the user may provide the value in chat for one operation; do not repeat or persist it. Otherwise, the user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, public IDs, environment variable names without values, or non-secret configuration.
 metadata:
-  version: "0.9.0"
+  version: "0.9.1"
   compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding assistants.
 ---
 
 # Secret Manager
 
-The core contract: the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value.
+The core contract: by default the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value. The disposable-test exception below is deliberately narrow.
+
+## Current project reference
+
+For the MeetingCatcher BFF secret workflow:
+
+- Local repository: `/Users/kotatsu/AI-BASE/ai-dev/dev/reki-note-api`
+- GitHub repository: `https://github.com/tanakaisworking/reki-note-api`
 
 Use the smallest usable path. Open a visible terminal, let the user paste the
 value into a normal visible `input here:` prompt, then pass it directly to the
@@ -34,10 +41,19 @@ Trigger examples include:
 Do not trigger for public project IDs, public URLs, environment variable names
 without values, or general security discussion where no secret value is needed.
 
+## Disposable test-secret exception
+
+If the user explicitly states that a secret is test-only, disposable, low-privilege, and will be disabled or revoked immediately after the test, the user may paste it into chat for one operation. This is allowed only when all of those conditions are clear.
+
+- Warn once that chat history may retain the value and do not repeat, quote, or copy it into files, notes, logs, shell history, or persistent secret storage.
+- Use it only for the requested one-shot test; do not deploy it or substitute it for a production credential.
+- After the test, remind the user to disable or revoke it and treat it as unusable afterward.
+- If the scope, lifetime, or revocation plan is unclear, use the normal visible-terminal workflow instead.
+
 ## Rules
 
-1. Never ask the user to paste a secret value into chat.
-2. Never put a secret value in chat, files, logs, or agent-visible output.
+1. For normal, reusable, production, or unknown-scope secrets, never ask the user to paste the value into chat. The disposable test-secret exception above is the only exception.
+2. Never echo or persist a secret value in files, logs, shell history, or agent-visible output. Under the exception, the value may already exist in chat by the user's explicit choice, but it must not be repeated or copied elsewhere.
 3. The assistant may handle non-secret metadata: secret name, service name, account name, working directory, and target command.
 4. Show the user the destination command before value entry.
 5. Hidden or masked input is prohibited. Do not pass `--hidden`; do not use a native CLI prompt if it masks input.
