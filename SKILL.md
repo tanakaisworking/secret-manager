@@ -18,13 +18,6 @@ description: >-
 
 The core contract: by default the assistant may know the secret name, destination command, and project path; the assistant must not know the secret value. The disposable-test exception below is deliberately narrow.
 
-## Current project reference
-
-For an example project secret workflow:
-
-- Local repository: `/path/to/project`
-- GitHub repository: `https://github.com/example/example-project`
-
 Use the smallest usable path. Open a visible terminal, let the user paste the
 value into a normal visible `input here:` prompt, then pass it directly to the
 destination command. Do not use masked password boxes; paste failures are worse
