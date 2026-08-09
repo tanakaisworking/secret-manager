@@ -1,9 +1,17 @@
 ---
 name: secret-manager
-description: Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or another local assistant needs any real value that should normally not be pasted into chat: API keys, access tokens, refresh tokens, PATs, service role keys, JWTs, OAuth client secrets, webhook signing secrets, passwords, database URLs with credentials, SSH/private keys, recovery codes, one-time credentials, vendor/client credentials, or any pasted-looking credential even when the prefix is unknown. Trigger on phrasing such as "secret", "API key", "token", "password", "シークレット", "鍵", "認証情報", "これ使って", "渡すよ", or "ログイン情報" when the value grants account or service access. For an explicitly disposable, test-only, low-privilege secret that the user will revoke immediately after use, the user may provide the value in chat for one operation; do not repeat or persist it. Otherwise, the user should tell the assistant only the secret name and destination, never the value. Open a visible local terminal so the user can verify the exact command and enter the value outside chat. Do not use for general security discussion, secret scanning, public IDs, environment variable names without values, or non-secret configuration.
-metadata:
-  version: "0.9.1"
-  compatibility: Local macOS with Terminal.app and osascript for bundled scripts; the workflow is assistant-agnostic and can be followed by Claude Code, Codex, Cursor, or similar local coding assistants.
+description: >-
+  Use whenever an AI coding assistant such as Claude Code, Codex, Cursor, or
+  another local assistant needs a real value that should not be pasted into
+  chat, including API keys, access tokens, passwords, private keys, database
+  credentials, or other account-access values. Trigger when a user wants to
+  provide or use a secret, token, password, key, or authentication credential.
+  For an explicitly disposable, test-only, low-privilege secret that will be
+  revoked immediately, allow one chat-based operation without repeating or
+  persisting the value. Otherwise, accept only the secret name and destination,
+  and open a visible local terminal for value entry outside chat. Do not use for
+  general security discussion, secret scanning, public IDs, environment
+  variable names without values, or non-secret configuration.
 ---
 
 # Secret Manager
